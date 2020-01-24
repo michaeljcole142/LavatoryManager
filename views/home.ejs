@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="css/lavstyles.css">
+    <title>Show Lav List Data</title>
+    <style>
+ 
+    </style>
+	<img src="/images/HC_Header.jpg" alt="Not sure what this is"></img>
+	<br></br>
+	<label class="lavheader">Student Lavatory Manager</label>
+	<br></br>
+</head>
+<body>
+	<div class=initializeIt>
+		<label class="selectLav" >Lavatory: </label>
+		<select id="lavListDD" name="lavListDD" class="lavListDD" onchange="lavSelected()">
+			<option value="none" selected disabled hidden> 
+				Select a Lavatory
+			</option>
+		</select>
+		<label class="recordedBy" >Recorded By :</label>
+		<input type="text" id="recordedBy" name="recordedBy">
+		<br></br>
+	</div>
+	<hr>
+	<div id="CheckInDiv">
+		<label for="student" class="studentLabel">Student:</label>
+			<input type="text" name="student" id="student" list="studentlist" onchange="studentPicked()"></input>
+				<datalist id="studentlist"></datalist>
+		<label class="commentLabel" for="by">Comments: </label>
+		<input type="text" id="ci_comments" name="comments">
+		<br><br>
+		<label for="id" class="idLabel">Id : </label><input type="text" id="checkInId" readonly>
+		<br/>
+		<br/>
+		<div class="button">
+			<input type="button" class="checkinButton" value="Check In" onclick="checkIn()" />
+		</div>
+	</div>
+	<input id="toggleCheckIn" class="hideCheckIn" type="checkbox" onclick="hideCheckIn()"/><label id="toggleCheckInLabel">Hide Check In</label>
+	<input class="checkOutButton" type="button" value= "Submit Check Out" onclick="multiCheckout()" />
+	<br/>
+	<table id="checkedInTable">Checked In</table>
+	<table id="checkedOutTable">Checked Out</table>
+ 
+</body>
+
+<script>
+
+
+/* 
+ * This section is automatically executed once page is loaded.
+ * It is used to initialize the lists.
+ */
+initialize();
+
+/*
+ * This function is where all load initialization
+ * happens.  It is loading lav list and student list into
+ * the browswer for the user.
+ */
+function initialize() {
+	var y = createLavKeyList();
+	var v = createStudentList();
+}
+
+/*
+ * This function is used to set the id of the student
+ * to be dispayed as soon as the student name is picked.
+ */
+function studentPicked() {
+	var stud = document.getElementById("student");
+	var oNode = document.getElementById(stud.value);
+	var ciId = document.getElementById("checkInId");
+	ciId.value = oNode.getAttribute("data-cd");
+}
+/*
+ * This function is used to check a student into the lav.
+ * It will put the checkin data from the respective fields 
+ * and send to the server to be saved.
+ */
+function checkIn() {
+	var lav = document.getElementById("lavListDD").value;
+	var id = document.getElementById("checkInId").value;
+	var stud = document.getElementById("student");
+	var oNode = document.getElementById(stud.value);
+	var name = oNode.value;
+	
+	if ( name == "Select..." || id == "" ) {
+		alert("A Student Must Be Selected!");
+		return;
+	}
+	var by = document.getElementById("recordedBy").value;
+	var comments = document.getElementById("ci_comments").value;
+	var fullPacket = { "id": id, "lav" :lav, "name" : name, "by" : by, "comments" : comments }; 
+	const rr = async()=> { 
+		const response = await fetch('/check_in', {
+			method : 'POST' ,
+			headers: {'Content-Type': 'application/json'},
+			body : JSON.stringify(fullPacket) 
+		});
+		const json = await response.json();
+		await alert("res is " + json.message);
+		resetStudentCheckIn();
+		lavSelected();
+	}
+	var vv = rr();
+}
+/*
+ * Once a student is checked in, this function
+ * resets fields to be blank for next checkin.
+ */
+function resetStudentCheckIn() {
+	var id = document.getElementById("checkInId");
+	id.value = "";
+	var comments = document.getElementById("ci_comments");
+	comments.value="";
+	var student = document.getElementById("student");
+	student.value="";
+}
+/*  
+ * This function is called when user toggles the hide checkin checkbox.
+ */
+function hideCheckIn() {
+	var cIDiv = document.getElementById("CheckInDiv");
+	var checkBoxLabel = document.getElementById("toggleCheckInLabel");
+	var hide = document.getElementById("");
+	if (cIDiv.style.display === "none") {
+		cIDiv.style.display = "block";
+		checkBoxLabel.innerHTML = "Hide Check In"		
+	} else {
+		cIDiv.style.display = "none";
+		checkBoxLabel.innerHTML = "Show Check In"
+	}
+}
+	
+	
+/* 
+ * This function is used to check multiple students out at the same time.
+ * The table allows you to check out and update comments.
+ */
+function multiCheckout() {
+	var table = document.getElementById ("checkedInTable");
+	var rc= 0;
+	var xInList=[];
+	var dropdownlist = document.getElementById("lavListDD");
+	var lavUsing=dropdownlist.value;
+
+	// notice this starts at 1 and skips header row of table.
+	for ( var i=1, row; row = table.rows[i]; i++ ){
+		var c = row.cells[0];
+		var studentId = row.cells[7].childNodes[0].id;
+		var isChecked = row.cells[7].childNodes[0].checked;
+		var commentDef = row.cells[6].childNodes[0].defaultValue;
+		var commentValue = row.cells[6].childNodes[0].value;
+		var commentChanged = false;
+		if ( commentDef.localeCompare(commentValue) != 0 ) {
+			commentChanged = true;
+		}
+		if ( commentChanged || isChecked ) {
+			var newRecord = { "studentId" : studentId, "checkOut" : false, "commentChanged" : false, "commentValue" : "" }
+			if ( isChecked ) {
+				newRecord.checkOut = true;
+			}
+			if ( commentChanged ) {
+				newRecord.commentChanged = true;
+				newRecord.commentValue = commentValue;
+			}
+			xInList.push( newRecord);
+		}
+		rc++;
+	}
+	var dropdownlist90 = document.getElementById("lavListDD");
+	var lavUsing=dropdownlist.value;
+	var fullPacket = { "lav": lavUsing, "data": xInList };
+	
+	const rr = async()=> { 
+		const response = await fetch('/multi_check_out', {
+			method : 'POST' ,
+			headers: {'Content-Type': 'application/json'},
+			body : JSON.stringify(fullPacket) 
+		});
+		const json = await response.json();
+	}
+	var vv = rr();
+	vv.then(lavSelected);
+}
+	
+	
+/*
+ * This function is called once a lav is selected. It will then
+ * get the data and display it for that lav.
+ */ 
+function lavSelected() { 
+	var dropdownlist = document.getElementById("lavListDD");
+	getLavDataCache(dropdownlist.value);
+}
+
+/*
+ * For a given lav, this function retrieves the data of who has
+ * been checked in and out.
+ */
+function getLavDataCache(lavname) {
+	var mylavlist = { "lav" : lavname };
+	const rr = async()=> {  
+		const response = await fetch('/get_lavdatacache', {
+			method : 'POST' ,
+			headers: {'Content-Type': 'application/json'},
+			body : JSON.stringify(mylavlist)  
+		});
+		const json = await response.json();
+		createLavTables(json);		
+	}
+	rr();
+}
+	
+/* 
+ * This function is used to initialize the datalist for the dropdown
+ * of student names.  It sets the id of the student on the list too. 
+ * It reads the student_list.json data from the server side.
+ */
+function createStudentList() {
+    var myStudentList = '';
+	(async() => { await fetch('/get_studentlist.json').then(
+		function(response) {
+			if (response.status !== 200) {
+				console.log('Looks like there was a problem. Status Code: ' +
+				response.status);
+				return;
+			}
+			// Examine the text in the response
+			response.json().then(function(data) {
+			var studlist = document.getElementById("studentlist");
+			var indexAt=0;
+			for ( var i=0 ; i < data.length ; i++ ) {
+				var studlist = document.getElementById("studentlist");
+				var oNode = document.createElement("option");
+				oNode.id = data[i].name;
+				oNode.value = data[i].name;
+				oNode.text = data[i].name;
+				oNode.setAttribute("data-cd",data[i].cd)
+				studlist.appendChild(oNode);
+			}
+			return;
+		});
+	}
+	).catch(function(err) {
+		console.log('Fetch Error :-S', err);
+	} ) } ) ();
+}
+
+/*
+ * This function calls the server and gets a lavlist json
+ * file of the lavs and loads it locally for the dropdown.
+ */
+function createLavKeyList() {
+    var myLavList = '';
+	(async() => { await fetch('/get_lavkeys.json').then(
+		function(response) {
+			if (response.status !== 200) {
+				console.log('Looks like there was a problem. Status Code: ' + response.status);
+				return;
+			}
+			// Examine the text in the response
+			response.json().then(function(data) {
+				var select = document.getElementById('lavListDD');
+				for ( var i=0 ; i < data.length ; i++ ) {
+					select.options[select.options.length] = new Option(data[i].lav);
+				}		
+				return;
+			});
+		}
+				).catch(function(err) {
+					console.log('Fetch Error :-S', err);
+				} ) 
+		} ) ();
+}
+	
+/*
+ * This is a generic function to sort a table.
+ * It is used to sort the checked in or checked out table.
+ */
+function sortTable(table, col, reverse) {
+	var tb = table.tBodies[0], // use `<tbody>` to ignore `<thead>` and `<tfoot>` rows
+	tr = Array.prototype.slice.call(tb.rows, 0), // put rows into array
+    i;
+    reverse = -((+reverse) || -1);
+    tr = tr.sort(function (a, b) { // sort rows
+        return reverse // `-1 *` if want opposite order
+            * (a.cells[col].textContent.trim() // using `.textContent.trim()` for test
+                .localeCompare(b.cells[col].textContent.trim())
+               );
+    });
+    for(i = 0; i < tr.length; ++i) tb.appendChild(tr[i]); // append each row in order
+}
+
+/*
+ * This is a generic function that makes a table sortable by
+ * adding all of the appropriate stuff to it.
+ */
+function makeSortable(table) {
+	var th = table.tHead, i;
+	th && (th = th.rows[0]) && (th = th.cells);
+	if (th) i = th.length;
+	else return; // if no `<thead>` then do nothing
+	while (--i >= 0) (function (i) {
+		var dir = 1;
+		th[i].addEventListener('click', function () {sortTable(table, i, (dir = 1 - dir))});
+	}(i));
+}
+
+/*
+ * This function is used to create the table that represents
+ * students that are currently in the lav and the table for 
+ * students who have checked in and out of the lav.
+ */
+function createLavTables(data) {
+
+	var checkedInData = data[0].checkedIn;
+	var checkedOutData = data[1].checkedOut;     		
+	var col=["Id","Name","Date","Time In", "Time Out", "By", "Comment", "CheckOut" ];
+	var CItable = document.getElementById("checkedInTable");
+	CItable.innerHTML = "";	
+    var header = CItable.createTHead();
+	var row = header.insertRow(0);
+	
+	/* Create Headers.  This needs fixed because it assumes that there is 1 person
+	 * checked into the lav.
+	 */
+    for (var i = 0; i < col.length; i++) {
+        var th = row.insertCell(i);      // TABLE HEADER.
+        th.innerHTML = col[i];
+		th.id = "header" + i;
+		th.style.cursor = "default"
+	}
+    var tbody = CItable.createTBody();
+    for (var i = 0; i < checkedInData.length; i++) {
+		tr = tbody.insertRow(0);
+		//add StudentId
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedInData[i].studentId;
+		//add StudentName
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedInData[i].name;	
+		//add  Date
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedInData[i].date;	
+		//add  InTime
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedInData[i].timeIn;
+		//add  Outtime
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedInData[i].timeOut;
+		//add  by
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedInData[i].by;
+		//add  comments
+		var tabCell = tr.insertCell(-1);
+		var tb = document.createElement('input');
+		tb.type = "text";
+		tb.id = checkedInData[i].studentId;
+		tb.defaultValue = checkedInData[i].comment;
+		tb.className = "Comment";
+		tb.onchange = function (e) { console.log("changed ->", e)}
+		tb.onfocus = function (e) { console.log("onfocus->", e)};
+		tabCell.appendChild(tb);
+			
+		// Add a checkbox to show you are checking the student in.
+		var checkboxCell = tr.insertCell(-1);
+		var cb = document.createElement('input');
+		cb.type = "checkbox";
+		cb.id = checkedInData[i].studentId;
+		cb.className = "CheckInLavClickBox";
+		cb.onclick = function (e) { console.log("clicked ->", e.srcElement.className, " id->", e.srcElement.id, " checked->", e.srcElement.checked); }
+		checkboxCell.appendChild(cb);
+	}
+	makeSortable(CItable);
+		
+	/*  Build the checked out table */
+	var col=["Id","Name","Date","Time In", "Time Out", "By", "Comment"];
+
+    var COtable = document.getElementById("checkedOutTable");
+	COtable.innerHTML = "";
+		
+    var header = COtable.createTHead();
+	var row = header.insertRow(0);
+	
+	/* Create Headers.  This needs fixed because it assumes that there is 1 person
+	 * checked into the lav.
+	 */
+    for (var i = 0; i < col.length; i++) {
+        var th = row.insertCell(i);      // TABLE HEADER.
+        th.innerHTML = col[i];
+		th.id = "header" + i;
+		th.style.cursor = "default"
+	}
+
+    var tbody = COtable.createTBody();
+    for (var i = 0; i < checkedOutData.length; i++) {
+
+        tr = tbody.insertRow(0);
+		//add StudentId
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].studentId;
+		//add StudentName
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].name;
+		//add  Date
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].date;
+		//add  InTime
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].timeIn;
+		//add  Outtime
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].timeOut;
+		//add  by
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].by;
+		//add  comments
+		var tabCell = tr.insertCell(-1);
+		tabCell.innerHTML = checkedOutData[i].comment;
+	}	
+	makeSortable(COtable);
+}
+</script>
+</html>

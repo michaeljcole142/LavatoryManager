@@ -1,0 +1,78 @@
+
+button, select, th, td, p, input, label, option, text {
+	font:14px Verdana;
+}
+table, th, td 
+{
+	border: solid 1px #DDD;
+	border-collapse: collapse;
+	padding: 2px 3px;
+	text-align: center;
+}
+th {
+	font-weight:bold;
+}
+
+.studentLabel {
+	padding-left: 30px;
+	display: inline-block;
+	width: 125px;
+}
+
+.idLabel {
+	padding-left: 30px;
+	display: inline-block;
+	width: 125px;
+}
+
+.commentLabel {
+	padding-left: 30px;
+	display: inline-block;
+	width: 125px;
+}
+.hideCheckIn {
+	padding-left: 30px;
+	display: inline-block;
+	margin-left: 30px;
+}
+.checkOutButton {
+	margin-left: 490px;
+}
+.checkinButton {
+	margin-left: 156px;
+}
+.recordedBy {
+	padding-left: 30px;
+	display: inline-block;
+	width: 125px;
+}
+.selectLav {
+	padding-left: 10px;
+	display: inline-block;
+	width: 125px;
+}
+hr {
+	height: 5px;
+	background-color: black;
+	width: 800px;
+	margin-left: 0;
+	border-width: 2px;
+	border-color: black;
+}
+/* This is the script header for the Lav */
+.lavheader {
+	font-family: URW Chancery L, cursive;
+	padding-left: 150px;
+	font-size: 40px;
+}
+
+.initializeIt {
+	padding-left: 30px;
+}
+.initializeIt label {
+	display: inline-block;
+	width: 125px;
+}
+
+
+	
