@@ -138,19 +138,28 @@ const { promisify } = require('util');
 			});
 			var i; 
 			var rows = sheet.rowCount -1;
+			var checkedOut=false;
 			for ( i=0; i < rows*7; i=i+7) {
 				var idCell = cells[i];
 				if ( idCell.value == sId ) {
-					console.log("Checking Out ", sId );
-					console.log(`${idCell.row},${idCell.col}: ${idCell.value}`);
 					var outCell = cells[i+4];
-					outCell.value = getTimeString(new Date());
-					outCell.save( (err) => { console.log("Saved. ", err) });
-					console.log("----saved");
+					console.log("OutCell=",outCell.value);
+					if ( outCell.value == "" ) {
+						console.log("Checking Out ", sId );
+						console.log(`${idCell.row},${idCell.col}: ${idCell.value}`);
+						outCell.value = getTimeString(new Date());
+						outCell.save( (err) => { console.log("Saved. ", err) });
+						console.log("----saved");
+						checkedOut=true;
+					}
 				}
 			};
+			if ( checkedOut == false ) {
+				throw new Error("Could not check student " + sId + " out");
+			}
 		} catch (e) {
 			console.log("Error in Lavatory.checkOutLav for id=" , sId, " Error: " , e);
+			throw e;
 		} 
 	}
 	async getLavList() {

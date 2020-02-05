@@ -41,18 +41,23 @@ class LavatoryCache {
 		}
 		return false;
 	}
-	checkOutStudent(aStudentId) {
+	checkOutStudentById(aStudentId) {
+		console.log("in checkoutstudent");
 		var aRecord = this.checkedInList.get(aStudentId) 
 		if ( aRecord == null ) {
 			return new Error("StudentId:" + aStudentId + " not currently checked in!");
 		}
+		console.log ("got record" , aRecord);
 		var tm = getTimeString(new Date());
+		console.log("time is ", tm);
 		aRecord.timeOut = tm;
+		console.log("In checkOutStudent ", aRecord);
 		this.checkedOutList.push(aRecord);
 		this.checkedInList.delete(aStudentId);
 		return;
 	}
 	checkOutStudent(aStudentId, aTimeOut, commentChanged, aComment ) {
+		console.log("I am in this one");
 		var aRecord = this.checkedInList.get(aStudentId);
 		if ( aRecord == null ) {
 			return new Error("StudentId:" + aStudentId + " not currently checked in!");

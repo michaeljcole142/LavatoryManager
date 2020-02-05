@@ -79,7 +79,7 @@ app.post("/check_in_or_out", (req, res) => {
 		(async() =>  { 
 			await theLavHandler.lavCheckOut(student_key[0].id, student_key[0].lav);
 			res.status(200).json({
-				message: "Checked In Successfully"
+				message: "Checked Out Successfully"
 			});
 		} )();
 	} else {

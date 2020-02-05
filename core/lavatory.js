@@ -56,15 +56,18 @@ console.log("%%%%%%%%%%%%%%%%%%%%%%%%%% checking in id-", sId, "  name-", sName,
 		return this.cache.getJSON();
 	}
 	
-	checkOutLav(sId) {
-	console.log("in checkOutLav with ", sId);
-		var err = this.cache.checkOutStudent(sId);
-		if ( err != null ) {
-			console.log("ERROR:  " + err);
-		}
-		var err = this.googleSheetDB.checkOutStudent(sId);
-		if ( err != null ) { console.log("ERROR!!!!!", err); } 
-		
+	async checkOutLav(sId) {
+		try {
+			console.log("in checkOutLav with ", sId);
+			var err = this.cache.checkOutStudentById(sId);
+			if ( err != null ) {
+				console.log("ERROR:  " + err);
+			}
+			var err = await this.googleSheetDB.checkOutStudent(sId);
+			if ( err != null ) { console.log("ERROR!!!!!", err); } 
+		} catch (e) {
+			console.log("error checking out " , e);
+		}	
 	}
 	getLavListFromCache() {
 		return this.cache.getJSON();
