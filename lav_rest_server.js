@@ -176,11 +176,19 @@ console.log("sending ", lavkeylist);
  
 app.get('/get_studentlist.json', (req,res) => {
 	console.log('in get_studentlist.json');
+<<<<<<< HEAD
 	var myStudentList = require('./student_list.json');
 	res.json(myStudentList);
 });
 app.get('/get_lavkeys.json', (req, res)=>{ 
 	var myLavList = require('./lav_keys.json');
+=======
+	var myStudentList = require('./config/student_list.json');
+	res.json(myStudentList);
+});
+app.get('/get_lavkeys.json', (req, res)=>{ 
+	var myLavList = require('./config/lav_keys.json');
+>>>>>>> sig updates
 	res.json(myLavList); 
 }); 
 
