@@ -10,6 +10,7 @@ const LavatoryGoogleSheet = require('../db/lavatory_google_sheet.js');
  */
  
  class Lavatory {
+	 
 	constructor(aName) { 
 		this.name = aName;
 		this.creds = require('../config/client_secret.json');
@@ -18,48 +19,93 @@ const LavatoryGoogleSheet = require('../db/lavatory_google_sheet.js');
 	
 	
 	}
-	
-	
-	initialize() {
+	/*
+	 * This method is intended to initialize whatever needs to be setup after
+	 * constructor finishes.
+	 * For now it just connects to googlesheet.
+	 */
+	async initialize() {
 		this.googleSheetDB.connect();
+		var initializeList = await this.googleSheetDB.initializeCacheAtStartup();
+		for ( var i=0; i< initializeList.length ; i++ ) {
+			var aRecord = initializeList[i];
+			this.cache.checkInWithLavatoryRecord(aRecord);
+		}
 	}
-	
-    
+    /*
+	 * This methood is used to check students into the lav.
+	 * It should handle both the cache and db.  In the initial
+	 * case the db is google-sheet.  later SQL server.
+	 */
     checkInLav(sId, sName, byName, comments) {
 		var inTime = new Date();
 		var d = getDateString(inTime);
 		var t = getTimeString(inTime);
-
-console.log("%%%%%%%%%%%%%%%%%%%%%%%%%% checking in id-", sId, "  name-", sName, " byName-", byName, " comments-", comments);		
 		/* This code is used for keeping a cache in sync. */
 		var ret = this.cache.checkInStudent(sId, sName, d, t, byName, comments); 
 		
 		var ret = this.googleSheetDB.checkInLav(sId, sName, d, t, byName, comments);
+		return ret;
 	}
 	
+	/*
+	 * Boolean check to see if a student is checked in.
+	 */
 	isCheckedIn(id) {
 		return this.cache.isCheckedIn(id);
 	}
 	
+	/*
+	 * used to bulk checkout or update.  
+	 * 3 scenarios in data: 
+	 * 1) comment update only
+	 * 2) comment and checkout.
+	 * 3) checkout only.
+	 */
 	async multiLavCheckOut(data) {
+		var i;
+		var checkingOut=[];
+		var commentsOnly=[];
+
+		for ( i=0; i < data.length ; i++ ) {
+			if ( data[i].checkOut == true ) {
+				checkingOut.push(data[i]);
+			} else {
+				commentsOnly.push(data[i]);
+			}
+		}
+		console.log("checkingout->", checkingOut);
+		console.log("commentsOnly->", commentsOnly);
 
 		var err = this.cache.multiStudentUpdate(data);
 		/* This code handles the cache.  */
 		if ( err != null ) { console.log("ERROR!!!!!", err); } 
 		
-		var err = await this.googleSheetDB.multiLavCheckOut(data);
+		err = await this.googleSheetDB.multiLavCheckOut(checkingOut);
 		if ( err != null ) { console.log("ERROR!!!!!", err); } 
-		
+		err = await this.googleSheetDB.multiLavCommentUpdate(commentsOnly);
+		if ( err != null ) { console.log("ERROR!!!!!", err); } 
 	}
 	
+	/*
+	 * returns json version of cache.  This can 
+	 * be used to return data to the presentation layer.
+	 */
 	getCacheData() {
 		return this.cache.getJSON();
 	}
 	
+	/*
+	 * check a single id out of lav.
+	 */
 	async checkOutLav(sId) {
 		try {
-			console.log("in checkOutLav with ", sId);
+			/*
+			 * This code used to keep checked out students in cache.  
+			 * Changed to just delete them.
 			var err = this.cache.checkOutStudentById(sId);
+			*/
+			var err = this.cache.removeStudentFromCache(sId);
 			if ( err != null ) {
 				console.log("ERROR:  " + err);
 			}

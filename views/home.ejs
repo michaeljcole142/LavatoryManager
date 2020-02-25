@@ -100,8 +100,11 @@ function checkIn() {
 			headers: {'Content-Type': 'application/json'},
 			body : JSON.stringify(fullPacket) 
 		});
-		const json = await response.json();
-		await alert("res is " + json.message);
+console.log("response is->", response);
+		if ( response.status != 200 ) {
+			const json = await response.json();
+			await alert("res is " + json.message);
+		}
 		resetStudentCheckIn();
 		lavSelected();
 	}

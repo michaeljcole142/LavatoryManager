@@ -1,6 +1,6 @@
 const GoogleSpreadsheet = require('google-spreadsheet');
 const { promisify } = require('util');
-
+const LavatoryRecord = require("../core/lavatory_record.js");
 
 /*
  * The Lavatory class is used persist lavatory data to google sheets.
@@ -8,6 +8,7 @@ const { promisify } = require('util');
  */
  
  class LavatoryGoogleSheet {
+	 
 	constructor(name) { 
 		this.name = name;
 		this.creds = require('../config/client_secret.json');
@@ -35,7 +36,7 @@ const { promisify } = require('util');
 		await promisify(doc.useServiceAccountAuth)(this.creds);
 		var info = await promisify(doc.getInfo)();
 		const aSheet = info.worksheets[0];
-		await aSheet.addRow({"Student Id": sId,"Student Name":sName,"Date": dt,"Time In" : timeIn, "Time Out":"","Recorded By":byName, "Comments" : comments},
+		await aSheet.addRow({"StudentId": sId,"StudentName":sName,"Date": dt,"TimeIn" : timeIn, "TimeOut":"","RecordedBy":byName, "Comments" : comments},
 		   something => console.log("IN Save with: ", something));
 	}
 	
@@ -43,8 +44,13 @@ const { promisify } = require('util');
 			console.log("Saved");
 	}
 	saveCB(err) {  console.log("Saved err:  " , err); }
-	
-	
+	/*
+	 * This function adds a record to the archive page.
+	 */
+	async addToArchive(id, name, dt, tmIn, tmOut, by, comment, sheet) {
+		await sheet.addRow({"StudentId": id,"StudentName":name,"Date": dt,"TimeIn" : tmIn, "TimeOut":tmOut,"RecordedBy":by, "Comments" : comment},
+		   something => console.log("IN Save with: ", something));
+	}
 	async multiLavCheckOut(data) {
 
 		var idlist = [];
@@ -56,9 +62,64 @@ const { promisify } = require('util');
 		// this will eventually need to change because there are recored across
 		// days.
 		try {
-			console.log("In Lavatory.checkOutLav()");
 			var doc = new GoogleSpreadsheet(this.sheetId);
+			await promisify(doc.useServiceAccountAuth)(this.creds);
+			const info = await promisify(doc.getInfo)();
+			const sheet = info.worksheets[0];
+			const archiveSheet = info.worksheets[1]; 
+			const rowss = await promisify(sheet.getRows)({
+					'min-row': 2,
+					'max-row': sheet.rowCount
+			});
+			var i; 
+			var rows = sheet.rowCount -1;
 
+			for ( i=0; i < rows; i++) {
+				if ( rowss[i] == null ) {
+					break;
+				}
+				var idAt = rowss[i].studentid;
+				if ( idlist.includes(idAt) ) {
+					//This means a change record came in for a record in the active sheet.
+					var changeRecord = this.getChangeRecord(idAt,data);
+					console.log("change Record is", changeRecord);
+					if ( changeRecord != null ) {
+						/* If here then we have a record that changed. */
+						var changeComment = changeRecord.commentChanged;
+						var checkOut = changeRecord.checkOut;
+						if ( rowss[i].outTime == null ) {
+							var commentAt=rowss[i].comments;
+							if ( changeComment == true ) {
+								commentAt = changeRecord.commentValue;
+							}
+							await this.addToArchive(rowss[i].studentid, rowss[i].studentname,
+										rowss[i].date,  rowss[i].timein, getTimeString(new Date()),
+										rowss[i].recordedby, commentAt,archiveSheet);
+							rowss[i].del();
+						}
+					}
+				};
+			};
+		} catch (e) {
+			console.log("Error in Lavatory.checkOutLav for id=" , data, " Error: " , e);
+		} 
+	}
+	/*
+	 * This function takes a list of comments to be updated and updates them in the
+	 * Active sheet of the lav log.
+	 */
+	async multiLavCommentUpdate(data) {
+
+		// This is a list of id's updating.
+		var idlist = [];
+		for (var i=0; i < data.length ; i++ ){
+				idlist.push(data[i].studentId);
+		}
+		// THis code assumes there is only 1 record per student in the file.
+		// this will eventually need to change because there are recored across
+		// days.
+		try {
+			var doc = new GoogleSpreadsheet(this.sheetId);
 			await promisify(doc.useServiceAccountAuth)(this.creds);
 			const info = await promisify(doc.getInfo)();
 			const sheet = info.worksheets[0];
@@ -71,45 +132,26 @@ const { promisify } = require('util');
 			});
 			var i; 
 			var rows = sheet.rowCount -1;
-			console.log("there are rows->", rows);
 			for ( i=0; i < rows*7; i=i+7) {
 				var idCell = cells[i];
 				if ( idCell.value.length == 0 ) {
-					console.log("Leaving For Loop");
 					break;
 				}
-				
-				console.log("Looking up", idCell.value);
-				if ( idlist.includes(idCell.value) ) {
-					console.log("Found it");
-					//***  Gotta change code here.  I need to find the comment and/or checkout flag.
-					var changeRecord = this.getChangeRecord(idCell.value,data);
-					console.log("change Record is", changeRecord);
+				var idAt = idCell.value;
+				if ( idlist.includes(idAt) ) {
+					//This means a change record came in for a record in the active sheet.
+					var changeRecord = this.getChangeRecord(idAt,data);
 					if ( changeRecord != null ) {
+						/* If here then we have a record that changed. */
 						var changeComment = changeRecord.commentChanged;
-						var checkOut = changeRecord.checkOut;
-					
-						console.log("working with record->", changeRecord);
-						console.log("changeComment = ", changeComment);
-						console.log("checkOut = " , checkOut);
-						if ( changeComment == true ) {
-							console.log("changed comment");
-							var commentCell = cells[i+6];
-							commentCell.value = changeRecord.commentValue;
-							commentCell.save((err)=> { console.log("Saved",err); });
-						}
-						if  ( checkOut == true ) {
-							console.log("checkedout");
-							var outCell = cells[i+4];
-							outCell.value = getTimeString(new Date());
-							outCell.save( (err) => { console.log("Saved. ", err) });
-						}
-						
+						var commentCell = cells[i+6];
+						commentCell.value = changeRecord.commentValue;
+						commentCell.save((err)=> { console.log("Saved",err); });
 					}
 				};
 			};
 		} catch (e) {
-			console.log("Error in Lavatory.checkOutLav for id=" , data, " Error: " , e);
+			console.log("Error in Lavatory.multiLavCommentUpdate for id=" , data, " Error: " , e);
 		} 
 	}
 	getChangeRecord(id, data) {
@@ -121,6 +163,11 @@ const { promisify } = require('util');
 		return null;
 	}
 	
+	/*
+	 * This function is used to check a student out of the lav.  It
+	 * will remove the student from the active page and put them into
+	 * the archive page of a google sheet.  It will also set the checkout time.
+	 */
 	async checkOutStudent(sId) {
 
 		try {
@@ -129,27 +176,27 @@ const { promisify } = require('util');
 			await promisify(doc.useServiceAccountAuth)(this.creds);
 			const info = await promisify(doc.getInfo)();
 			const sheet = info.worksheets[0];
-			const cells = await promisify(sheet.getCells)({
+			const archiveSheet = info.worksheets[1]; 
+			
+			const rowss = await promisify(sheet.getRows)({
 					'min-row': 2,
-					'max-row': sheet.rowCount,
-					'min-col': 1,
-					'max-col': 7,
-					'return-empty': true,
+					'max-row': sheet.rowCount
 			});
 			var i; 
 			var rows = sheet.rowCount -1;
 			var checkedOut=false;
-			for ( i=0; i < rows*7; i=i+7) {
-				var idCell = cells[i];
-				if ( idCell.value == sId ) {
-					var outCell = cells[i+4];
-					console.log("OutCell=",outCell.value);
-					if ( outCell.value == "" ) {
-						console.log("Checking Out ", sId );
-						console.log(`${idCell.row},${idCell.col}: ${idCell.value}`);
-						outCell.value = getTimeString(new Date());
-						outCell.save( (err) => { console.log("Saved. ", err) });
-						console.log("----saved");
+			for ( i=0; i < rows; i++) {
+				if ( rowss[i] == null ) {
+					break;
+				}
+				var idAt = rowss[i].studentid;
+				if ( idAt == sId ) {
+					if ( rowss[i].timeout == "" ) {
+						await this.addToArchive(rowss[i].studentid, rowss[i].studentname,
+										rowss[i].date,  rowss[i].timein, getTimeString(new Date()),
+										rowss[i].recordedby, rowss[i].comments,archiveSheet);
+						await rowss[i].del();
+						console.log("Checked Out ", sId );
 						checkedOut=true;
 					}
 				}
@@ -157,6 +204,35 @@ const { promisify } = require('util');
 			if ( checkedOut == false ) {
 				throw new Error("Could not check student " + sId + " out");
 			}
+		} catch (e) {
+			console.log("Error in Lavatory.checkOutLav for id=" , sId, " Error: " , e);
+			throw e;
+		} 
+	}
+	async initializeCacheAtStartup() {
+
+		try {
+			var doc = new GoogleSpreadsheet(this.sheetId);
+
+			await promisify(doc.useServiceAccountAuth)(this.creds);
+			const info = await promisify(doc.getInfo)();
+			const sheet = info.worksheets[0];
+			const rowss = await promisify(sheet.getRows)({
+					'min-row': 2,
+					'max-row': sheet.rowCount
+			});
+			var i; 
+			var checkedIn=[];
+			var rows = sheet.rowCount -1;
+			for ( i=0; i < rows; i++) {
+				if ( rowss[i] == null ) {
+					break;
+				}
+				var aStudent =	new LavatoryRecord(rowss[i].studentid, rowss[i].studentname, rowss[i].date,
+							rowss[i].timein, rowss[i].timeout, rowss[i].recordedby, rowss[i].comments);
+				checkedIn.push(aStudent);
+			};
+			return checkedIn;
 		} catch (e) {
 			console.log("Error in Lavatory.checkOutLav for id=" , sId, " Error: " , e);
 			throw e;

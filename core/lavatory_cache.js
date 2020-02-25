@@ -14,6 +14,9 @@ class LavatoryCache {
 		/* The checkedOutList is an array because it can have duplicates for a person.
 		 * for example a student may check in and out of the lav twice in one session.
 		 */
+		/*  checkedOutList is not obsolete.  I am keeping it here for now but ultimately 
+		 * we get rid of it once we understand how we are loading history to view.
+		 */
 		this.checkedOutList = [];
 	}
 	
@@ -25,22 +28,37 @@ class LavatoryCache {
 		aRecord.comment = aComment;
 		return;
 	}
+	/*
+	 * This function creates a lavatory record and then checks student into cache.
+	 */
 	checkInStudent(aStudentId, aName, aDate, aTimeIn, aBy, aComment) {
-		
 		var aRecord = new LavatoryRecord(aStudentId, aName, aDate, aTimeIn, aBy, aComment);
-		if ( this.checkedInList.has(aStudentId) ) {
-			return new Error("Student " +  aStudentId + ":" + aName + " already checked in lavatory!");
+		return this.checkInWithLavatoryRecord(aRecord);
+	}
+	
+	/*
+	 * this will check a student into the cache.  It takes a LavatoryRecord in.
+	 */
+	checkInWithLavatoryRecord(aRecord) {
+		if ( this.checkedInList.has(aRecord.studentId) ) {
+			return new Error("Student " +  aRecord.studentId + ":" + aRecord.name + " already checked in lavatory!");
 		}
 		this.checkedInList.set(aRecord.studentId, aRecord);
 		return;
 	}
-	
+	/* 
+	 * This returns a boolean True/False indicating if a student is in the lav currently.
+	 */
 	isCheckedIn(aStudentId) {
 		if ( this.checkedInList.has(aStudentId) ) {
 			return true;
 		}
 		return false;
 	}
+	
+	/*
+	 * Used to check a student out of the cache by their student id.
+	 */
 	checkOutStudentById(aStudentId) {
 		console.log("in checkoutstudent");
 		var aRecord = this.checkedInList.get(aStudentId) 
@@ -56,8 +74,10 @@ class LavatoryCache {
 		this.checkedInList.delete(aStudentId);
 		return;
 	}
+	/*
+	 * This is used to check a student out but is inclusive of being given aTimeOut and comment.
+	 */
 	checkOutStudent(aStudentId, aTimeOut, commentChanged, aComment ) {
-		console.log("I am in this one");
 		var aRecord = this.checkedInList.get(aStudentId);
 		if ( aRecord == null ) {
 			return new Error("StudentId:" + aStudentId + " not currently checked in!");
@@ -67,6 +87,17 @@ class LavatoryCache {
 		}
 		aRecord.timeOut = aTimeOut;
 		this.checkedOutList.push(aRecord);
+		this.checkedInList.delete(aStudentId);
+	}
+	/*
+	 * This method is used for the model where when a student checks
+	 * out they are just removed from cache.
+	 */
+	removeStudentFromCache(aStudentId) {
+		var aRecord = this.checkedInList.get(aStudentId);
+		if ( aRecord == null ) {
+			return new Error("StudentId:" + aStudentId + " not currently checked in!");
+		}
 		this.checkedInList.delete(aStudentId);
 	}
 	/*
@@ -84,11 +115,21 @@ class LavatoryCache {
 		for ( var i=0; i < data.length; i++ ) {
 			var updateRec = data[i];
 			if ( updateRec.checkOut == true ) {
-				var err = this.checkOutStudent( updateRec.studentId, aTm, updateRec.commentChanged,updateRec.commentValue);
-				errorString = errorString + JSON.stringify(err);
+				/* THis code was used to keep track of checked out students. 
+				 * moving to a model where they are not kept in cache for now.
+				 * Instead they are deleted from cache once checked out.
+				 *
+				err = this.checkOutStudent( updateRec.studentId, aTm, updateRec.commentChanged,updateRec.commentValue);
+				*/
+				err=this.removeStudentFromCache(updateRec.studentId);
+				if ( err != null ) {
+					errorString = errorString + JSON.stringify(err);
+				}
 			} else {
-				var err = this.updateCheckedInComment(updateRec.studentId,updateRec.commentValue);
-				errorString = errorString + JSON.stringify(err);
+				err = this.updateCheckedInComment(updateRec.studentId,updateRec.commentValue);
+				if ( err != null ) {
+					errorString = errorString + JSON.stringify(err);
+				}
 			}
 		}
 		if ( errorString.length > 0 ) {
@@ -96,6 +137,9 @@ class LavatoryCache {
 		}
 		return;
 	}
+	/*
+	 * This function creates a string/JSON version of the cache.
+	 */
 	getJSON() { 
 		var resp=[];
 		var inLav=[];
