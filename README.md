@@ -1,6 +1,8 @@
 **Hunterdon Central Regional High School**
 
-**Lavatory Checkin**  **Automation Project**
+**Lavatory Checkin**  
+
+**Automation Project**
 
 
 
