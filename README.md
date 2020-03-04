@@ -77,3 +77,5 @@ Source Code Control
 **Phase III**
 
 Ultimately, Phase III of the project will be a phase where students participate in the development process.  It is still to-be-determined as to what constructs the students will participating.  But, given the design of the system and the technologies used, participation in further development will be of educational value to students.   Once we get to phase III, we will need a development server to host test versions of the application before we move it into production.   We will also need test versions of the database server that will house the data.    The construct of this phase will need to be matured and collaborated to ensure the best possible experience for students.
+
+***
