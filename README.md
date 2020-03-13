@@ -8,7 +8,8 @@
 
 **Introduction**
 
-The document provides an overview of a software development project that is underway to improve the current approach for tracking students who enter lavatories across the school.   The current process revolves around maintaining a google-sheets for each individual lavatory.   The teacher who is providing lavatory duty is responsible for collecting id&#39;s, typing name in and some other information.   Then when a student exits the lavatory the teacher then checks them out.   On some periodic basis the data is archived out of the google-sheet into a history file.  This process is error prone, labor intensive and lacks some fundamental controls to ensure the quality of the data.
+This document provides an overview of a software development project that is underway to improve the current approach for tracking students who enter lavatories across the school.   The current process revolves around maintaining a google-sheets for each individual lavatory.   The teacher who is providing lavatory duty is responsible for collecting id&#39;s, typing name in and some other information.   Then when a student exits the lavatory the teacher then checks them out.   On some periodic basis the data is archived out of the google-sheet into a history file.  This process is error prone, labor intensive and lacks some fundamental controls to ensure the quality of this data.
+
 
 This project can be thought of in 3 phases :
 
